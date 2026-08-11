@@ -22,9 +22,6 @@ import math
 import traceback
 from pathlib import Path
 
-# Import static power library
-from archipelago.ptpx_lib import ptpx_lib
-
 
 # def verboseprint(*args, **kwargs):
 #     print(*args, **kwargs)
@@ -1347,49 +1344,6 @@ def predict_power(graph, f_mhz, instance_to_instr, II, scales=None):
     print(f"  proxy={pred.proxy:.3f},")
     print(f"  features_counts={pred.feature_counts}")
     return pred.total_mW
-
-
-
-
-# Analytical primitive baseline
-def predict_analytical_primitive_power(graph, f_mhz, II, f_ref_mhz=None, II_ref=None):
-    """
-    Analytical primitive-power estimate.
-    Uses the existing count_primitives(graph) and ptpx_lib. Dynamic entries are
-    optionally scaled by throughput (f/II)/(f_ref/II_ref). Set
-    ANALYTICAL_SCALE_DYNAMIC=0 if ptpx_lib values are already in mW for the
-    current candidate.
-    """
-    counts = count_primitives(graph)
-    dyn_mW = 0.0
-    leak_mW = 0.0
-
-    for prim, cnt in counts.items():
-        entry = ptpx_lib.get(prim)
-        if not entry:
-            continue
-        dyn_keys = [k for k in entry.keys() if k.startswith("dynamic")]
-        if dyn_keys:
-            dyn_mW += float(cnt) * float(entry[dyn_keys[0]])
-        leak_mW += float(cnt) * float(entry.get("static_mW", 0.0))
-
-    if os.environ.get("ANALYTICAL_SCALE_DYNAMIC", "1") == "0":
-        return float(dyn_mW + leak_mW), float(dyn_mW), float(leak_mW)
-
-    if f_ref_mhz is None:
-        f_ref_mhz = float(os.environ.get("ANALYTICAL_F_REF_MHZ", "100.0"))
-    if II_ref is None:
-        II_ref = float(os.environ.get("ANALYTICAL_II_REF", "1.0"))
-    if float(f_ref_mhz) <= 0.0:
-        raise ValueError("ANALYTICAL_F_REF_MHZ must be positive.")
-    throughput_scale = (
-        float(f_mhz) / effective_power_ii(II)
-    ) / (
-        float(f_ref_mhz) / effective_power_ii(II_ref)
-    )
-    dyn_scaled = dyn_mW * throughput_scale
-    return float(dyn_scaled + leak_mW), float(dyn_scaled), float(leak_mW)
-
 def _append_csv_row(path, row):
     """
     Append a CSV row while allowing newly added columns.
@@ -1425,58 +1379,6 @@ def _append_csv_row(path, row):
     with open(path, "a", newline="") as fh:
         writer = csv.DictWriter(fh, fieldnames=old_fields, extrasaction="ignore")
         writer.writerow(row)
-
-def append_baseline_trace_row(
-    csv_path,
-    app_dir,
-    cap_mW,
-    breaks,
-    graph,
-    f_mhz,
-    II,
-    instance_to_instr,
-    model_dir=".",
-    scales=None,
-):
-    """
-    Append one candidate to a trace used to compute:
-      - Frequency-only Cascade
-      - Analytical primitive
-
-    """
-    kernel = os.path.basename(os.path.abspath(app_dir))
-    prediction_scales = dict(scales or {})
-    prediction_scales.setdefault("model_dir", model_dir)
-    pred = predict_power_components(
-        graph,
-        f_mhz,
-        instance_to_instr,
-        II,
-        scales=prediction_scales,
-    )
-    p_analytical, p_analytical_dyn, p_analytical_leak = predict_analytical_primitive_power(graph, f_mhz, II)
-    feats = extract_power_features(graph)
-
-    row = {
-        "kernel": kernel,
-        "cap_mW": float(cap_mW),
-        "breaks": int(breaks),
-        "f_mhz": float(f_mhz),
-        "II": float(II),
-        "effective_power_II": float(effective_power_ii(II)),
-        "P_mean_mW": float(pred.total_mW),
-        "P_mean_dyn_mW": float(pred.dyn_mW),
-        "P_mean_leak_mW": float(pred.leak_mW),
-        "P_analytical_mW": float(p_analytical),
-        "P_analytical_dyn_mW": float(p_analytical_dyn),
-        "P_analytical_leak_mW": float(p_analytical_leak),
-        "P_oracle_mW": "",
-        "P_oracle_dyn_mW": "",
-        "P_oracle_leak_mW": "",
-    }
-    for k in EVENT_FEATURE_ORDER:
-        row[k] = feats.get(k, 0.0)
-    _append_csv_row(csv_path, row)
 
 # ---- Upper-envelope builders ----
 @dataclass
@@ -2668,21 +2570,6 @@ def run_all_capstone_modes_post_pnr(
         predictor_elapsed_s = time.perf_counter() - predictor_start
         current_mean["value"] = pred.total_mW
 
-        baseline_trace_csv = os.environ.get("BASELINE_TRACE_CSV", "").strip()
-        if baseline_trace_csv:
-            append_baseline_trace_row(
-                csv_path=baseline_trace_csv,
-                app_dir=app_dir,
-                cap_mW=power_cap_mW,
-                breaks=break_count,
-                graph=candidate_graph,
-                f_mhz=f_mhz,
-                II=pipeline_config_interval,
-                instance_to_instr=instance_to_instr,
-                model_dir=model_dir,
-                scales=power_scales,
-            )
-
         print(
             f"\n[all-modes] candidate iteration={iteration_count}, "
             f"breaks={break_count}, "
@@ -3778,21 +3665,6 @@ def pipeline_pnr(
                     scales=power_scales,
                 )
                 U_rob = robust_upper_bound(pred, robust_spec)
-
-                baseline_trace_csv = os.environ.get("BASELINE_TRACE_CSV", "").strip()
-                if baseline_trace_csv:
-                    append_baseline_trace_row(
-                        csv_path=baseline_trace_csv,
-                        app_dir=app_dir,
-                        cap_mW=power_cap_mW,
-                        breaks=break_count,
-                        graph=curr_graph,
-                        f_mhz=curr_freq,
-                        II=pipeline_config_interval,
-                        instance_to_instr=instance_to_instr,
-                        model_dir=model_dir,
-                        scales=power_scales,
-                    )
 
                 snap = CandidateSnap(
                     itr=break_count,
