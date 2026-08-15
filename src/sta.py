@@ -362,12 +362,8 @@ def parse_args():
     )
     parser.add_argument("-v", "--visualize", action="store_true")
     parser.add_argument("-s", "--sparse", action="store_true")
-    parser.add_argument(
-        "-p", "--power", "-b", required=True, dest="max_power_budget", type=int
-    )
     args = parser.parse_args()
     dirname = args.application  # os.path.join(args.application, "bin")
-    max_power_budget = args.max_power_budget
     netlist = os.path.join(dirname, "design.packed")
     assert os.path.exists(netlist), netlist + " does not exist"
     placement = os.path.join(dirname, "design.place")
@@ -375,7 +371,7 @@ def parse_args():
     route = os.path.join(dirname, "design.route")
     assert os.path.exists(route), route + " does not exists"
     id_to_name_filename = os.path.join(dirname, "design.id_to_name")
-    return netlist, placement, route, id_to_name_filename, max_power_budget, args.visualize, args.sparse
+    return netlist, placement, route, id_to_name_filename, args.visualize, args.sparse
 
 
 def run_sta(packed_file, placement_file, routing_file, id_to_name, sparse):
@@ -408,12 +404,9 @@ def main():
         placement_file,
         routing_file,
         id_to_name_filename,
-        max_power_budget,
         visualize,
         sparse,
     ) = parse_args()
-
-    print("From sta.py: max_power_budget: ", max_power_budget)
 
     netlist, buses = pythunder.io.load_netlist(packed_file)
 
