@@ -156,6 +156,7 @@ REFERENCE_TABLE7 = {
         50,
     ),
     ("full", 90): (1.0, 13.851293110149957, 49),
+    ("unpruned", 90): (1.0, 13.851293110149957, 49),
     ("full", 8): (1.0, 13.851293110149957, 8),
     ("full", 4): (1.0, 13.851293110149957, 4),
 }
@@ -201,6 +202,7 @@ TABLE7_SETTINGS = [
     ("fit_activity", 90),
     ("fit_activity_pvt", 90),
     ("full", 90),
+    ("unpruned", 90),
     ("full", 8),
     ("full", 4),
 ]
@@ -211,6 +213,7 @@ TABLE7_LABELS = {
     ("fit_activity", 90): "Fit + activity",
     ("fit_activity_pvt", 90): "Fit + activity + PVT",
     ("full", 90): "Full bounds",
+    ("unpruned", 90): "Unpruned",
     ("full", 8): r"Pruned to $K\leq 8$",
     ("full", 4): r"Pruned to $K\leq 4$",
 }
@@ -229,6 +232,7 @@ TABLE7_BOUNDS = {
         r"$\epsilon_{e,\mathrm{fit}}+\epsilon_{e,\mathrm{act}}"
         r"+\epsilon_{e,\mathrm{PVT}}+\epsilon_{e,\mathrm{OOD}}$"
     ),
+    ("unpruned", 90): "Full bounds",
     ("full", 8): "Full bounds, top 8 retained",
     ("full", 4): "Full bounds, top 4 retained",
 }
@@ -239,6 +243,7 @@ TABLE7_LABELS_PLAIN = {
     ("fit_activity", 90): "Fit + activity",
     ("fit_activity_pvt", 90): "Fit + activity + PVT",
     ("full", 90): "Full bounds",
+    ("unpruned", 90): "Unpruned",
     ("full", 8): "Pruned to K ≤ 8",
     ("full", 4): "Pruned to K ≤ 4",
 }
@@ -249,6 +254,7 @@ TABLE7_BOUNDS_PLAIN = {
     ("fit_activity", 90): "ε_fit + ε_act",
     ("fit_activity_pvt", 90): "ε_fit + ε_act + ε_PVT",
     ("full", 90): "ε_fit + ε_act + ε_PVT + ε_OOD",
+    ("unpruned", 90): "Full bounds",
     ("full", 8): "Full bounds, top 8 retained",
     ("full", 4): "Full bounds, top 4 retained",
 }
@@ -1127,9 +1133,11 @@ def write_figure13(
 def table7_rows(runs: list[RunData]) -> list[dict[str, Any]]:
     result = []
     for bound_mode, k_value in TABLE7_SETTINGS:
+        source_bound_mode = "full" if bound_mode == "unpruned" else bound_mode
+
         per_run = []
         for run in runs:
-            candidate = run.table7_candidate(bound_mode, k_value)
+            candidate = run.table7_candidate(source_bound_mode, k_value)
             full_reference = run.table7_candidate("full", 90)
             if full_reference is None:
                 raise ValueError(
@@ -1158,7 +1166,7 @@ def table7_rows(runs: list[RunData]) -> list[dict[str, Any]]:
                         if is_success
                         else None
                     ),
-                    "retained": run.table7_retained(bound_mode, k_value),
+                    "retained": run.table7_retained(source_bound_mode, k_value),
                 }
             )
 
