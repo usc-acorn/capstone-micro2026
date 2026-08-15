@@ -143,7 +143,8 @@ Most modified files are now under:
 ### 1.3 Choose a kernel
 
 Inside the container, edit the `--sam_graph` argument in
-`/aha/cascade_demo.sh`. Keep `--width 32 --height 16`.
+`/aha/cascade_demo.sh`, and make sure the width and height are set to
+`--width 32 --height 16`.
 
 For example:
 
@@ -281,11 +282,14 @@ Copy the five result files to `data/capstone_tensor3_ttv_high_cap/`. Then derive
 ```bash
 python3 plot/generate_figure12_sweep_data.py \
   --trace data/capstone_tensor3_ttv_high_cap/capstone_all_modes_trace.csv \
-  --output data/figure12_sweep.csv
+  --output data/figure12_sweep.csv \
+  --run-id tensor3_ttv_high_cap
 ```
 
 The sweep script reselects candidates offline for each target cap. The very
-large run cap is used to preserve the complete trajectory.
+large run cap is used to preserve the complete trajectory. When a trace contains
+results from multiple runs, `--run-id` selects the run used to construct the
+sweep data.
 
 ## 3. Generate Figures 11–15 and Tables 7–8 locally
 
@@ -302,10 +306,17 @@ This command produces:
 - Figure 11 from `data/capstone_tensor3_ttv/capstone_figure11_timing.csv`
 - Figure 12 from `data/figure12_sweep.csv`
 - Figures 13–15 from all eight kernel directories
-- Table 7 from the five Capstone III bound modes and the `K=90`, `K=8`, and
-  `K=4` selections
+- Table 7 from the Unpruned row, the five Capstone III bound modes, and the
+  `K=90`, `K=8`, and `K=4` selections
 - Table 8 from the tensor3-innerprod and mat-sddmm selections plus the fixed
   prior-work rows
+
+Figure 11 reports mean execution time per iteration. The Cascade and Capstone
+post-PnR loop timings are measured on the machine running the artifact and are
+therefore expected to vary across hardware. The **Signoff power** timing comes
+from a separate PrimeTime PX flow protected under NDA, so the public artifact
+does not rerun that flow. Instead, the generated Figure 11 uses the Signoff
+power timing value reported in the paper.
 
 ## 4. Generate the synthetic power-model demonstration
 
