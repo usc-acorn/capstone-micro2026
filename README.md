@@ -10,10 +10,9 @@ Tables 7–8 in the paper.
 The PrimeTime PX hierarchy reports and row-level power values used for the Capstone hierarchical power model construction in the paper cannot be released because they contain information protected by an NDA.
 The artifact therefore separates two workflows.
 
-- **Figures 4, 9, and 10 are reproduced as demonstrations using synthetic data.** The reports to be generated under
-  `data/power_model_synthetic/` do not contain any values from the private reports. They exercise the same parsing, feature
-  extraction, nonnegative fitting, activity-proxy, oracle, and plotting code,
-  but they do not exactly reproduce the paper's numerical power model accuracy results.
+- **Figures 4, 9, and 10 are functional demonstrations using synthetic data.** The reports under
+  `data/power_model_synthetic/` do not contain values from the private PTPX reports. They exercise the same parsing, feature extraction, nonnegative fitting, activity-proxy, oracle, and plotting code,
+  but the numerical values and exact per-kernel trends are not expected to match those in the paper. The synthetic data is intentionally not tuned to reproduce the paper's exact results.
 - **The controller experiments use the released deployed coefficients.** The
   coefficients in `coeffs/` were learned from the private reports and are also
   embedded as defaults in `src/pipeline.py`. They contain no raw report
@@ -62,6 +61,32 @@ REFERENCE VALIDATION: PASS — bundled controller data matches the reference sig
 
 The checks compare the numerical inputs and derived metrics used by the
 figures, and also confirm that all expected output files were written. View the generated figures in `generated_figures/`.
+
+### Expected behavior of Figures 4, 9, and 10
+
+Figures 4, 9, and 10 use deterministic synthetic PTPX data, so differences from
+the corresponding paper figures are expected.
+
+- **Figure 4:** Calibrating only on `vec_elemadd` should fit that workload very
+  closely but may generalize poorly to other workloads. Calibrating across all
+  workloads should provide more consistent accuracy across kernels. The exact
+  per-kernel error ordering is specific to the synthetic dataset.
+
+- **Figure 9:** The Capstone model should track the synthetic reference power,
+  while the oracle should provide a more accurate optimistic reference. Because
+  the synthetic data is cleaner than the real PTPX data, the resulting errors
+  are lower than those reported in the paper.
+
+- **Figure 10:** The learned event-to-hierarchy mapping should align with the
+  expected hardware components. In Figure 10(b), the model and synthetic PTPX
+  power breakdowns should match very closely because the synthetic reports are
+  generated from the same simplified event structure that the model is designed
+  to learn.
+
+The expected outputs from the bundled synthetic dataset are provided in
+`generated_figures/generated_power_model/`. These outputs, along with the
+`REFERENCE VALIDATION: PASS` messages, should be used to verify a Quick Start
+run rather than comparing Figures 4, 9, and 10 directly against the paper.
 
 ## Repository contents
 
